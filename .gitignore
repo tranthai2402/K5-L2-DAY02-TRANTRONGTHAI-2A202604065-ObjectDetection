@@ -12,5 +12,11 @@ outputs/
 *.pt
 __pycache__/
 
+# Secret của Label Studio (API token) - không commit.
+tools/.ls_token
+
+# Ảnh preview dùng để rà nhãn bằng mắt - sinh lại được, không cần commit.
+preview/
+
 # macOS
 .DS_Store
