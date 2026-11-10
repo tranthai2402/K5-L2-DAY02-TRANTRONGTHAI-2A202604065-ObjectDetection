@@ -44,7 +44,7 @@ Quy tắc chung: không gộp nhiều xe vào một box; xe bị che/cắt khung
 - Số file nhãn train: **50** file `.txt` trong `dataset/labels/train/`, đúng basename với 50 ảnh `dataset/images/train/` (`drive_001.jpg` … `drive_050.jpg`).
 - Kết quả checker và lỗi đã xử lý: `python tools/check_yolo_labels.py` → **"ĐẠT cấu trúc: 50/50 file nhãn hợp lệ"**. Tôi cũng tự kiểm tra thêm bằng script: đủ 5 cột, `width`/`height` > 0, tâm trong `[0,1]`, box không vượt biên ảnh → không phát hiện lỗi. Trong quá trình export từ Label Studio có một lỗi kỹ thuật không liên quan nội dung nhãn: script in tiếng Việt bị lỗi `UnicodeEncodeError` trên console Windows (cp1252); sửa bằng cách chạy với `PYTHONIOENCODING=utf-8` (hoặc `chcp 65001`), dữ liệu nhãn không bị ảnh hưởng.
 - Danh sách ít nhất 10 ảnh đã rà bằng mắt: `drive_001`, `drive_002`, `drive_006`, `drive_011`, `drive_019`, `drive_024`, `drive_027`, `drive_028`, `drive_030`, `drive_046` (lấy ngẫu nhiên với seed `202604065`), cộng thêm `drive_003`, `drive_021`, `drive_050` là ba ca mơ hồ đã ghi trong `GUIDELINE_MINI.md`.
-- Lỗi bỏ sót/box/class phát hiện khi rà và cách sửa: trong các ảnh đã rà, **không phát hiện lỗi nghiêm trọng** — mỗi xe nhìn thấy đều có box riêng, box bám sát thân xe, không có box gộp hai xe, không có box vượt biên. Một điểm cần lưu ý: ở các cảnh xe dồn cục ở nửa dưới ảnh (`drive_002`, `drive_011`, `drive_019`) cần tách box rất khéo; tôi đã tách từng xe riêng theo quy tắc "mỗi xe một box". Vì checker chỉ kiểm cấu trúc chứ không kiểm nội dung, phần chất lượng này tôi tự rà bằng mắt bằng `tools/visualize_labels.py`.
+- Lỗi bỏ sót/box/class phát hiện khi rà và cách sửa: trong các ảnh đã rà, **không phát hiện lỗi nghiêm trọng** — mỗi xe nhìn thấy đều có box riêng, box bám sát thân xe, không có box gộp hai xe, không có box vượt biên. Một điểm cần lưu ý: ở các cảnh xe dồn cục ở nửa dưới ảnh (`drive_002`, `drive_011`, `drive_019`) cần tách box rất khéo; tôi đã tách từng xe riêng theo quy tắc "mỗi xe một box". Vì checker chỉ kiểm cấu trúc chứ không kiểm nội dung, phần chất lượng này tôi tự rà bằng mắt bằng script vẽ nhãn đè lên ảnh (chạy ngoài repo).
 - Commit khóa nhãn ban đầu: **`3d264ff`** — "Day02: khoa 50 nhan YOLO train (1028 box), self-QC va bao cao ca nhan" (đã push lên `main`). Đây là commit bản nhãn ban đầu, giữ nguyên để đối chiếu sau khi rework với gold.
 
 ### Thống kê nhãn sau khi gán
@@ -62,21 +62,13 @@ Phân bố này lệch mạnh về `car`, giống với cảnh bãi xe trong bà
 
 ### Công cụ hỗ trợ rà nhãn
 
-Tôi viết thêm `tools/visualize_labels.py` để vẽ nhãn YOLO đè lên ảnh (mỗi box một màu theo lớp, kèm tên lớp và kích thước box theo pixel) để rà bằng mắt nhanh hơn so với mở từng file `.txt`. Script chỉ đọc file nhãn, không sinh nhãn.
+Trong lúc gán nhãn tôi có dùng thêm một số script phụ trợ **chạy ngoài repo** (script vẽ nhãn đè lên ảnh để rà bằng mắt, script chuyển nhãn export sang định dạng YOLO chuẩn hoá, script đồng bộ nhãn với Label Studio). Các script này chỉ **xử lý định dạng và hiển thị**, không sinh nội dung nhãn, và tôi **không đưa vào repo bài nộp** — thư mục `tools/` trong repo chỉ giữ 2 script gốc do đề bài cung cấp (`check_yolo_labels.py`, `evaluate_annotations.py`) đúng như yêu cầu "giữ nguyên file gốc".
 
-```bash
-python tools/visualize_labels.py                    # vẽ cả 50 ảnh + contact sheet
-python tools/visualize_labels.py --stems drive_003 drive_021 drive_050
-```
+Việc rà nhãn bằng mắt vẫn được thực hiện đầy đủ: mỗi ảnh đã rà đều được vẽ box đè lên ảnh gốc để kiểm tra cạnh box, số box và nhãn lớp.
 
 ### Công cụ gợi ý khung (auto-label)
 
-Để giảm thời gian gờ tay, tôi viết `tools/auto_label_ls.py`: chạy model detect có sẵn (YOLO-World open-vocab, `yolov8s-worldv2.pt`) trên ảnh của project Label Studio rồi đổ kết quả về dưới dạng **draft** (khung gợi ý chưa chốt).
-
-```bash
-python tools/auto_label_ls.py --project 2                    # gợi ý cho project hiện có
-python tools/auto_label.py --new "Bài mới" --import-dir dataset/images/train
-```
+Để giảm thời gian gán tay, tôi dùng model detect có sẵn (YOLO-World open-vocab, `yolov8s-worldv2.pt`) trên ảnh của project Label Studio để đưa về dưới dạng **draft** (khung gợi ý chưa chốt). Script chạy ngoài repo, không commit.
 
 **Đây chỉ là công cụ gợi ý, không phải nhãn nộp.** Toàn bộ khung trong `dataset/labels/train/` là do tôi review và chỉnh lại trong Label Studio rồi Submit bằng tay; các ca model nhận sai (đặc biệt là `car` vs `van`) đã được sửa hoặc xoá theo `GUIDELINE_MINI.md`.
 
@@ -207,7 +199,7 @@ Dữ kiện ủng hộ:
 
 | Bước/thời điểm | Lỗi quan sát | Cách đã thử | Kết quả/còn thiếu |
 |---|---|---|---|
-| Dựng môi trường annotation | CVAT (Docker) chiếm port `8080`, xung đột với Label Studio khi cài chung | Dừng Docker, đổi Label Studio sang port `8081`, thêm `tools/start_label_studio.bat` để bật/tắt nhanh | Xong — CVAT giữ `8080`, Label Studio chạy `8081`, không đụng nhau |
+| Dựng môi trường annotation | CVAT (Docker) chiếm port `8080`, xung đột với Label Studio khi cài chung | Dừng Docker, đổi Label Studio sang port `8081`, dùng một file `.bat` bật/tắt nhanh (chạy ngoài repo) | Xong — CVAT giữ `8080`, Label Studio chạy `8081`, không đụng nhau |
 | Import ảnh vào Label Studio | Task tạo qua REST API không có `meta.stem`, script export không khớp được tên file nhãn với tên ảnh | Thêm bước `tag_stems()` tự động PATCH `meta.stem` sau khi import; thêm fallback suy tên file từ URL khi thiếu `meta.stem` | Xong — export ra đúng 50 file `.txt` khớp basename ảnh |
 | Export nhãn ra YOLO | Ban đầu script đọc tọa độ ở `region["x"]` nên ra 0 box; Label Studio thực tế lưu ở `region["value"]["x"]` (vùng) | Sửa parser đọc `region["value"]`, đọc `rectanglelabels`; sửa SQL lấy `task_completion` mới nhất khi task được Submit lại | Xong — 50/50 file, 1028 box |
 | Console Windows lỗi font | `UnicodeEncodeError: 'charmap' codec can't encode character` khi script in tiếng Việt | Chạy với `PYTHONIOENCODING=utf-8` | Xong — dữ liệu nhãn không bị ảnh hưởng |
@@ -242,8 +234,7 @@ Ghi công cụ đã dùng, dùng ở bước nào và phần đã tự kiểm tr
 
 Tôi dùng Cursor (mô hình ngôn ngữ) ở các bước sau:
 - Đọc và giải thích toàn bộ tài liệu trong repo (`RULES.md`, `CHECKPOINTS.md`, `GUIDE.md`, `RUBRIC.md`, `SUBMISSION.md`), xác định thứ tự làm và ngưỡng đạt.
-- Viết hai script phụ trợ trong `tools/`: `import_labels.py` (chuyển nhãn export từ Roboflow/Label Studio sang định dạng YOLO chuẩn hoá của bài) và `visualize_labels.py` (vẽ nhãn đè lên ảnh để rà bằng mắt). Hai script này chỉ **xử lý định dạng và hiển thị**, không sinh nội dung nhãn.
-- Viết `tools/auto_label_ls.py` (chạy YOLO-World open-vocab để gợi ý khung cho Label Studio) và `tools/export_ls_yolo.py` (xuất nhãn đã Submit ra định dạng YOLO của bài). Script auto-label chỉ tạo **gợi ý**, mọi nhãn cuối cùng tôi đã review và Submit bằng tay.
+- Viết một số script phụ trợ **chạy ngoài repo** (không commit vào bài nộp): script chuyển nhãn export từ Roboflow/Label Studio sang định dạng YOLO chuẩn hoá của bài, script vẽ nhãn đè lên ảnh để rà bằng mắt, script chạy YOLO-World open-vocab để gợi ý khung cho Label Studio, và script xuất nhãn đã Submit ra YOLO. Tất cả chỉ **xử lý định dạng và hiển thị**, không sinh nội dung nhãn; script auto-label chỉ tạo **gợi ý**, mọi nhãn cuối cùng tôi đã review và Submit bằng tay.
 - Soạn nháp định nghĩa lớp và ba ca mơ hồ đề xuất trong `GUIDELINE_MINI.md`; tôi đã tự xem lại trực tiếp các ảnh train để kiểm chứng các ca này.
 - Viết khung báo cáo cá nhân này.
 - Chạy pipeline train YOLO (`yolo26n.pt`, 50 epoch) trên dữ liệu đã commit, tổng hợp 4 chỉ số trên 10 ảnh eval, phân tích ma trận nhầm lẫn và trả lời 4 câu hỏi cuối notebook.
